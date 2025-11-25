@@ -55,11 +55,12 @@
                 enabled: true, 
                 solver: 'forceAtlas2Based', 
                 forceAtlas2Based: {
-                    // Instellingen voor meer ruimte en minder overlap
-                    gravitationalConstant: -100, // Meer afstoting tussen alle nodes
+                    // Instellingen voor meer ruimte en specifieke overlapvermijding
+                    gravitationalConstant: -150, // Sterkere algehele afstoting
                     centralGravity: 0.005,
-                    springLength: 200,      // Grotere afstand tussen verbonden nodes
-                    springConstant: 0.08    // Zwakkere aantrekkingskracht
+                    springLength: 250,      // Nog grotere afstand tussen verbonden nodes
+                    springConstant: 0.08,   
+                    avoidOverlap: 1         // CRUCIAAL: Gebruikt de 'Size' van de node om overlapping te voorkomen
                 },
                 stabilization: { 
                     enabled: true, 
