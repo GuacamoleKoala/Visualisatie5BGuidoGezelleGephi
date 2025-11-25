@@ -60,6 +60,7 @@
                     springLength: 100,
                     springConstant: 0.18
                 },
+                // Snellere stabilisatie om 'dansen' te stoppen
                 stabilization: { 
                     enabled: true, 
                     iterations: 100, 
@@ -77,25 +78,26 @@
                 // Laden van nodes.csv
                 const nodesData = await parseCSV('nodes.csv');
                 allNodes = nodesData.map(d => ({
-                    // Mapping voor de nieuwe nodes.csv (met Size)
+                    // Kolomnamen zijn HOOFDLETTERGEVOELIG en kloppen met je geüploade nodes.csv
                     id: d.Id, 
                     label: d.Label, 
                     group: d.category, 
-                    // Naam (Label) toegevoegd aan de hover tekst
+                    // FIX: Naam (Label) toegevoegd aan de hover tekst
                     title: `Naam: ${d.Label}\nType: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
                     startYear: parseInt(d.startyearcorfixvalue), 
                     endYear: parseInt(d.endyearcor),
-                    // Gebruik Size kolom uit de data, met fallback naar 15
+                    // FIX: Node grootte bepaald door 'Size' kolom, met fallback naar 15
                     size: parseFloat(d.Size) || 15 
                 }));
 
-                // Laden van edges.csv (onveranderd)
+                // Laden van edges.csv
                 const edgesData = await parseCSV('edges.csv');
                 allEdges = edgesData.map(d => ({
-                    // Mapping voor edges.csv
+                    // Kolomnamen kloppen met je geüploade edges.csv
                     from: d.Source, 
                     to: d.Target, 
                     label: d.rollabel, 
+                    // Oplossing voor de kolomnaam met newline
                     title: `Relatie: ${d.rollabel}\nJaar: ${d['finalstartyearfix\nvalue']}-${d.finalendyearfixvalue}`,
                     startYear: parseInt(d['finalstartyearfix\nvalue']), 
                     endYear: parseInt(d.finalendyearfixvalue)
@@ -110,37 +112,43 @@
         }
 
         /**
-         * Utility functie om een CSV-bestand te parsen met PapaParse (met dubbele controle voor delimiter).
+         * Utility functie om een CSV-bestand te parsen met PapaParse.
+         * Probeert eerst met ',' en dan met ';'.
          */
         function parseCSV(url) {
             return new Promise((resolve, reject) => {
-                const attemptParse = (delimiter = ',', callback) => {
+                const attemptParse = (delimiter, callback) => {
                     Papa.parse(url, {
                         download: true,
                         header: true,
                         skipEmptyLines: true,
                         delimiter: delimiter, // Gebruik de opgegeven delimiter
                         complete: callback,
-                        error: (error) => reject(error)
+                        error: (error) => {
+                            // Netwerkfouten (404, CORS) worden hier opgevangen
+                            console.error(`Fout bij downloaden van ${url} met scheidingsteken '${delimiter}':`, error);
+                            // We rejecten niet direct, zodat de tweede poging kan starten.
+                        }
                     });
                 };
 
-                // Eerste poging: Komma-scheidingsteken (standaard)
+                // POGING 1: Komma-scheidingsteken (standaard)
                 attemptParse(',', (results) => {
-                    if (results.data.length > 0) {
+                    if (results.data.length > 0 && results.data[0].Id !== undefined) {
                         console.log(`CSV succesvol geladen met ',' voor ${url}`);
                         return resolve(results.data);
                     }
 
-                    // Tweede poging: Puntkomma-scheidingsteken (vaak bij Europese CSV's)
+                    // POGING 2: Puntkomma-scheidingsteken (vaak bij Europese CSV's)
                     attemptParse(';', (resultsSemi) => {
-                        if (resultsSemi.data.length > 0) {
+                        // Check opnieuw of er data is en of de Id kolom gelezen is
+                        if (resultsSemi.data.length > 0 && resultsSemi.data[0].Id !== undefined) {
                             console.log(`CSV succesvol geladen met ';' voor ${url}`);
                             return resolve(resultsSemi.data);
                         }
 
-                        // Definitieve fout
-                        reject(new Error(`CSV-bestand ${url} is leeg of kon niet correct worden geparst.`));
+                        // Definitieve fout: kon niet parsen met de verwachte kolommen
+                        reject(new Error(`CSV-bestand ${url} kon niet correct worden geparst met de verwachte kolomnamen.`));
                     });
                 });
             });
