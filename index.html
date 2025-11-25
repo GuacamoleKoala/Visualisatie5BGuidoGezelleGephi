@@ -39,11 +39,11 @@
         let network = null;
         const container = document.getElementById('mynetwork');
 
-        // Configuraties voor Vis.js, aangepast voor snelle stabilisatie
+        // Configuraties voor Vis.js
         const options = {
             nodes: {
                 shape: 'dot',
-                size: 10,
+                // 'size' is hier verwijderd om de data-gedreven grootte te garanderen
                 font: { size: 12, color: '#333' },
                 borderWidth: 2
             },
@@ -54,20 +54,18 @@
             },
             physics: {
                 enabled: true, 
-                // Gebruik de snellere Force Atlas 2 solver
                 solver: 'forceAtlas2Based', 
                 forceAtlas2Based: {
-                    gravitationalConstant: -50, // Zwaartekracht aangepast
+                    gravitationalConstant: -50, 
                     centralGravity: 0.005,
                     springLength: 100,
                     springConstant: 0.18
                 },
-                // Snellere stabilisatie om 'dansen' te stoppen
                 stabilization: { 
                     enabled: true, 
-                    iterations: 100, // Stopt na 100 iteraties (was 1000)
+                    iterations: 100, 
                     fitAfterStabilized: true, 
-                    tolerance: 0.001 // Snellere drempel om te stoppen
+                    tolerance: 0.001
                 }
             }
         };
@@ -80,24 +78,24 @@
                 // Laden van nodes.csv
                 const nodesData = await parseCSV('nodes.csv');
                 allNodes = nodesData.map(d => ({
-                    // BELANGRIJK: Gebruik de exacte, hoofdlettergevoelige namen uit nodes.csv
                     id: d.Id, 
                     label: d.Label, 
                     group: d.category, 
-                    title: `Type: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
+                    // FIX 1: Voeg de naam (Label) toe aan de hover tekst (title)
+                    title: `Naam: ${d.Label}\nType: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
                     startYear: parseInt(d.startyearcorfixvalue), 
-                    endYear: parseInt(d.endyearcor)
+                    endYear: parseInt(d.endyearcor),
+                    // FIX 2: Gebruik de Size kolom voor de grootte van de knoop
+                    size: parseFloat(d.Size) 
                 }));
 
                 // Laden van edges.csv
                 const edgesData = await parseCSV('edges.csv');
                 allEdges = edgesData.map(d => ({
-                    // BELANGRIJK: Gebruik de exacte, hoofdlettergevoelige namen uit edges.csv
                     from: d.Source, 
                     to: d.Target, 
                     label: d.rollabel, 
                     title: `Relatie: ${d.rollabel}\nJaar: ${d['finalstartyearfix\nvalue']}-${d.finalendyearfixvalue}`,
-                    // Oplossing voor de vreemde kolomnaam met newline
                     startYear: parseInt(d['finalstartyearfix\nvalue']), 
                     endYear: parseInt(d.finalendyearfixvalue)
                 }));
