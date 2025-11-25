@@ -5,7 +5,6 @@
     <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.2/standalone/umd/vis-network.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
-        /* CRUCIAAL: De container moet een vaste hoogte en breedte hebben om zichtbaar te zijn */
         #mynetwork {
             width: 100%;
             height: 600px; 
@@ -13,8 +12,10 @@
             box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
         }
         body { font-family: Arial, sans-serif; padding: 20px; }
-        .controls { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; }
+        .controls { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; display: flex; align-items: center;}
         .controls label, .controls input { margin-right: 20px; }
+        #resetButton { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: auto; }
+        #resetButton:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
@@ -29,6 +30,8 @@
         <input type="number" id="endYear" value="1890" min="1800" max="1950" onchange="filterAndDraw()">
         
         <p style="margin-top: 10px;">Gefilterde knooppunten: <strong id="nodeCount">0</strong> | Gefilterde randen: <strong id="edgeCount">0</strong></p>
+
+        <button id="resetButton" onclick="resetView()">Reset Weergave</button>
     </div>
 
     <div id="mynetwork"></div>
@@ -41,7 +44,7 @@
         let originalEdgesData = null; 
         const container = document.getElementById('mynetwork');
 
-        // --- Vis.js Options (Aangepast voor meer stabiliteit) ---
+        // --- Vis.js Options (Fysica uitgeschakeld om vaste lay-out te garanderen) ---
         const options = {
             nodes: {
                 shape: 'dot',
@@ -53,22 +56,9 @@
                 color: { inherit: true },
                 smooth: { type: 'continuous' }
             },
+            // ZET FYSICA UIT: De coördinaten worden direct uit de CSV gehaald.
             physics: {
-                enabled: true, 
-                solver: 'forceAtlas2Based', 
-                forceAtlas2Based: {
-                    gravitationalConstant: -150, 
-                    centralGravity: 0.001, // LAGERE centrale zwaartekracht voor minder trekken naar het midden
-                    springLength: 250,      
-                    springConstant: 0.05,   // ZWAKKERE veerkracht voor minder beweging
-                    avoidOverlap: 1         
-                },
-                stabilization: { 
-                    enabled: true, 
-                    iterations: 250, // MEER iteraties om in het begin stabiel te worden
-                    fitAfterStabilized: true, 
-                    tolerance: 0.001
-                }
+                enabled: false 
             }
         };
         // --------------------------------------------------------------------
@@ -85,7 +75,11 @@
                     startYear: parseInt(d.startyearcorfixvalue), 
                     endYear: parseInt(d.endyearcor),
                     size: parseFloat(d.Size) || 15,
-                    color: d.Color 
+                    color: d.Color,
+                    // NIEUW: Gebruik de vaste coördinaten uit de CSV om de positie vast te leggen
+                    x: parseFloat(d.X), 
+                    y: parseFloat(d.Y),
+                    fixed: true // Belangrijk: Node mag niet bewegen
                 }));
 
                 const edgesData = await parseCSV('edges.csv');
@@ -150,13 +144,13 @@
             });
 
             const filteredNodes = allNodes.filter(node => {
+                // BELANGRIJK: Zorg ervoor dat de node ook de coördinaten behoudt uit de allNodes array!
                 return connectedNodeIds.has(node.id);
             });
             
             document.getElementById('nodeCount').textContent = filteredNodes.length;
             document.getElementById('edgeCount').textContent = filteredEdges.length;
 
-            // BELANGRIJK: Sla de gefilterde data op als Vis.js DataSets
             originalNodesData = new vis.DataSet(filteredNodes);
             originalEdgesData = new vis.DataSet(filteredEdges);
 
@@ -167,45 +161,64 @@
 
             if (network) {
                 network.setData(data);
+                network.fit(); // Centreer de weergave op de nieuwe gefilterde set
             } else {
                 network = new vis.Network(container, data, options);
                 network.on("click", handleNodeClick);
             }
-            // Zorg ervoor dat de fysica stopt nadat de stabilisatie is voltooid
-            network.on("stabilizationIterationsDone", function() {
-                network.setOptions( {physics: false} );
-            });
+            
+            // Na het filteren, reset de highlighting (dit is beter dan het handmatig resetten)
+            resetHighlighting();
         }
         // --------------------------------------------------------------------
 
 
-        // --- Verbeterde Click Handler Functie (Geen reset/explosie) ---
+        // --- Nieuwe Reset Functie ---
+        function resetView() {
+            if (network) {
+                resetHighlighting();
+                network.fit(); // Centreer de weergave
+            }
+        }
+
+        function resetHighlighting() {
+            const updatedNodes = [];
+            const updatedEdges = [];
+
+            // Reset de stijlen van alle nodes naar hun oorspronkelijke staat
+            originalNodesData.forEach(node => {
+                updatedNodes.push({
+                    id: node.id,
+                    opacity: 1.0,
+                    color: node.color,
+                    borderWidth: 2
+                });
+            });
+
+            // Reset de stijlen van alle edges naar hun oorspronkelijke staat
+            originalEdgesData.forEach(edge => {
+                updatedEdges.push({
+                    id: edge.id,
+                    width: 1,
+                    color: { color: edge.color || '#333', opacity: 1.0 }
+                });
+            });
+            
+            // Pas de updates toe
+            originalNodesData.update(updatedNodes);
+            originalEdgesData.update(updatedEdges);
+        }
+        // --------------------------------------------------------------------
+
+
+        // --- Click Handler Functie (voor highlighting) ---
         function handleNodeClick(params) {
             const updatedNodes = [];
             const updatedEdges = [];
 
-            // Reset functie (klik op lege ruimte)
+            // Reset functionaliteit (klik op lege ruimte, of gebruik reset knop)
             if (params.nodes.length === 0) {
-                // We updaten de stijlen van alle nodes en edges terug naar hun oorspronkelijke staat (opacity 1.0)
-                originalNodesData.forEach(node => {
-                    updatedNodes.push({
-                        id: node.id,
-                        opacity: 1.0,
-                        color: node.color,
-                        borderWidth: 2
-                    });
-                });
-                originalEdgesData.forEach(edge => {
-                    updatedEdges.push({
-                        id: edge.id,
-                        width: 1,
-                        color: { color: edge.color || '#333', opacity: 1.0 }
-                    });
-                });
-                
-                // Pas de updates toe zonder de data te vervangen
-                originalNodesData.update(updatedNodes);
-                originalEdgesData.update(updatedEdges);
+                resetHighlighting();
                 return; 
             }
 
@@ -259,7 +272,7 @@
                 updatedEdges.push(update);
             });
 
-            // 4. Pas de stijlen toe via update(), GEEN setData()
+            // 4. Pas de stijlen toe
             originalNodesData.update(updatedNodes);
             originalEdgesData.update(updatedEdges);
         }
