@@ -55,10 +55,11 @@
                 enabled: true, 
                 solver: 'forceAtlas2Based', 
                 forceAtlas2Based: {
-                    gravitationalConstant: -50, 
+                    // Instellingen voor meer ruimte en minder overlap
+                    gravitationalConstant: -100, // Meer afstoting tussen alle nodes
                     centralGravity: 0.005,
-                    springLength: 100,
-                    springConstant: 0.18
+                    springLength: 200,      // Grotere afstand tussen verbonden nodes
+                    springConstant: 0.08    // Zwakkere aantrekkingskracht
                 },
                 stabilization: { 
                     enabled: true, 
@@ -74,24 +75,23 @@
                 // Laden van nodes.csv
                 const nodesData = await parseCSV('nodes.csv');
                 allNodes = nodesData.map(d => ({
+                    // Mapping Nodes (met dynamische Size en correcte kolomnamen)
                     id: d.Id, 
                     label: d.Label, 
                     group: d.category, 
-                    // FIX 1: Naam (Label) toegevoegd aan de hover tekst (title)
                     title: `Naam: ${d.Label}\nType: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
                     startYear: parseInt(d.startyearcorfixvalue), 
                     endYear: parseInt(d.endyearcor),
-                    // FIX 2: Node grootte bepaald door 'Size' kolom
-                    size: parseFloat(d.Size) || 15 
+                    size: parseFloat(d.Size) || 15 // Dynamische grootte uit de 'Size' kolom
                 }));
 
                 // Laden van edges.csv
                 const edgesData = await parseCSV('edges.csv');
                 allEdges = edgesData.map(d => ({
+                    // Mapping Edges (met correcte kolomnamen, inclusief de fix voor finalstartyearfixvalue)
                     from: d.Source, 
                     to: d.Target, 
                     label: d.rollabel, 
-                    // ✅ CRUCIALE FIX: De kolomnaam is nu de eenvoudige 'finalstartyearfixvalue'
                     title: `Relatie: ${d.rollabel}\nJaar: ${d.finalstartyearfixvalue}-${d.finalendyearfixvalue}`,
                     startYear: parseInt(d.finalstartyearfixvalue), 
                     endYear: parseInt(d.finalendyearfixvalue)
@@ -114,7 +114,7 @@
                     download: true,
                     header: true,
                     skipEmptyLines: true,
-                    // De standaard parser (komma) die eerder werkte wordt gebruikt
+                    // De standaard parser (komma) wordt gebruikt
                     complete: (results) => {
                         if (results.errors.length > 0) {
                             console.error(`Fouten bij het parsen van ${url}:`, results.errors);
@@ -139,6 +139,7 @@
             if (isNaN(startYear) || isNaN(endYear)) return;
 
             const filteredEdges = allEdges.filter(edge => {
+                // Filter: Edge actief als tijdsperiode overlapt met geselecteerde jaren.
                 return edge.startYear <= endYear && edge.endYear >= startYear;
             });
 
@@ -149,6 +150,7 @@
             });
 
             const filteredNodes = allNodes.filter(node => {
+                // Filter: Toon alleen nodes die nog verbonden zijn.
                 return connectedNodeIds.has(node.id);
             });
             
