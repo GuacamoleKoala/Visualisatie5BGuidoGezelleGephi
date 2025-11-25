@@ -37,11 +37,11 @@
         let allNodes = [];
         let allEdges = [];
         let network = null;
-        let originalNodesData = null; // Opslag voor de gefilterde, ongewijzigde nodes
-        let originalEdgesData = null; // Opslag voor de gefilterde, ongewijzigde edges
+        let originalNodesData = null; 
+        let originalEdgesData = null; 
         const container = document.getElementById('mynetwork');
 
-        // --- Vis.js Options (Met overlapvermijding) ---
+        // --- Vis.js Options ---
         const options = {
             nodes: {
                 shape: 'dot',
@@ -61,7 +61,7 @@
                     centralGravity: 0.005,
                     springLength: 250,      
                     springConstant: 0.08,   
-                    avoidOverlap: 1         // Gebruikt de 'Size' om overlapping te voorkomen
+                    avoidOverlap: 1         
                 },
                 stabilization: { 
                     enabled: true, 
@@ -76,7 +76,7 @@
         // --- Data Laden en Parsen Functies ---
         async function loadData() {
             try {
-                // Laden van nodes.csv
+                // Laden van nodes.csv (met kleur)
                 const nodesData = await parseCSV('nodes.csv');
                 allNodes = nodesData.map(d => ({
                     id: d.Id, 
@@ -85,10 +85,11 @@
                     title: `Naam: ${d.Label}\nType: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
                     startYear: parseInt(d.startyearcorfixvalue), 
                     endYear: parseInt(d.endyearcor),
-                    size: parseFloat(d.Size) || 15
+                    size: parseFloat(d.Size) || 15,
+                    color: d.Color 
                 }));
 
-                // Laden van edges.csv
+                // Laden van edges.csv (met kleur)
                 const edgesData = await parseCSV('edges.csv');
                 allEdges = edgesData.map(d => ({
                     id: d.Id, 
@@ -97,7 +98,8 @@
                     label: d.rollabel, 
                     title: `Relatie: ${d.rollabel}\nJaar: ${d.finalstartyearfixvalue}-${d.finalendyearfixvalue}`,
                     startYear: parseInt(d.finalstartyearfixvalue), 
-                    endYear: parseInt(d.finalendyearfixvalue)
+                    endYear: parseInt(d.finalendyearfixvalue),
+                    color: d.Color // **FIX: Kleur van de rand wordt nu opgeslagen**
                 }));
                 
                 filterAndDraw();
@@ -156,7 +158,6 @@
             document.getElementById('nodeCount').textContent = filteredNodes.length;
             document.getElementById('edgeCount').textContent = filteredEdges.length;
 
-            // Sla de ongewijzigde data op voor de click handler
             originalNodesData = new vis.DataSet(filteredNodes);
             originalEdgesData = new vis.DataSet(filteredEdges);
 
@@ -169,7 +170,6 @@
                 network.setData(data);
             } else {
                 network = new vis.Network(container, data, options);
-                // Koppel de click handler nadat het netwerk is gemaakt
                 network.on("click", handleNodeClick);
             }
         }
@@ -178,9 +178,8 @@
 
         // --- Click Handler Functie (voor highlighting) ---
         function handleNodeClick(params) {
-            // Als er niets is aangeklikt of als er op een rand is geklikt, reset de weergave
+            // Als er niets is aangeklikt, reset de weergave
             if (params.nodes.length === 0) {
-                // Gebruik de originele gefilterde data om te resetten
                 network.setData({
                     nodes: originalNodesData,
                     edges: originalEdgesData
@@ -189,15 +188,18 @@
             }
 
             const selectedNodeId = params.nodes[0];
+            // Gebruik de actuele verbonden randen in het netwerk
             const connectedEdges = network.getConnectedEdges(selectedNodeId);
             
-            // 1. Zoek alle verbonden nodes (neighbours)
+            // 1. Zoek alle verbonden nodes
             const connectedNodeIds = new Set();
             connectedEdges.forEach(edgeId => {
-                const edge = originalEdgesData.get(edgeId);
-                // Voeg de bron- en doel-node toe, behalve de geselecteerde node zelf
-                if (edge.from !== selectedNodeId) connectedNodeIds.add(edge.from);
-                if (edge.to !== selectedNodeId) connectedNodeIds.add(edge.to);
+                // Gebruik originalEdgesData om edge details op te halen
+                const edge = originalEdgesData.get(edgeId); 
+                if (edge) { // Zorg ervoor dat de rand bestaat (wat altijd zo moet zijn, maar veiligheidshalve)
+                    if (edge.from !== selectedNodeId) connectedNodeIds.add(edge.from);
+                    if (edge.to !== selectedNodeId) connectedNodeIds.add(edge.to);
+                }
             });
 
             // 2. Wijzig de stijl van alle nodes
@@ -208,7 +210,7 @@
                 let update = {};
 
                 if (isSelected || isConnected) {
-                    // Geselecteerde en verbonden nodes: Lichter, vol.
+                    // OPLICHTEN
                     update = {
                         id: node.id,
                         opacity: 1.0,
@@ -216,11 +218,11 @@
                         borderWidth: isSelected ? 3 : 2
                     };
                 } else {
-                    // NIET verbonden nodes: Donkerder en fletser.
+                    // DONKERDER MAKEN
                     update = {
                         id: node.id,
                         opacity: 0.3,
-                        color: { background: '#ccc', border: '#999' } // Grijs en flets
+                        color: { background: '#ccc', border: '#999' } 
                     };
                 }
                 return update;
@@ -232,11 +234,12 @@
                 let update = { id: edge.id };
 
                 if (isConnected) {
-                    // Verbonden randen: Volle kleur, dikkere lijn
+                    // OPLICHTEN
                     update.width = 3;
-                    update.color = { color: edge.color || '#333', opacity: 1.0 };
+                    // Gebruik de originele opgeslagen randkleur (edge.color is nu correct ingeladen!)
+                    update.color = { color: edge.color || '#333', opacity: 1.0 }; 
                 } else {
-                    // NIET verbonden randen: bijna onzichtbaar
+                    // DONKERDER MAKEN
                     update.width = 1;
                     update.color = { color: '#ccc', opacity: 0.1 };
                 }
