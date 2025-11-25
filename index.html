@@ -39,11 +39,10 @@
         let network = null;
         const container = document.getElementById('mynetwork');
 
-        // Configuraties voor Vis.js, aangepast voor snelle stabilisatie
+        // Configuraties voor Vis.js (stabilisatie en nodes)
         const options = {
             nodes: {
                 shape: 'dot',
-                // De size wordt nu door de data (size: d.Size) bepaald
                 font: { size: 12, color: '#333' },
                 borderWidth: 2
             },
@@ -78,21 +77,22 @@
                 // Laden van nodes.csv
                 const nodesData = await parseCSV('nodes.csv');
                 allNodes = nodesData.map(d => ({
-                    // GEFIXTE NAMES OP BASIS VAN DE NIEUWE NODES.CSV
+                    // Mapping voor de nieuwe nodes.csv (met Size)
                     id: d.Id, 
                     label: d.Label, 
                     group: d.category, 
-                    // FIX: Naam (Label) toegevoegd aan de hover tekst
+                    // Naam (Label) toegevoegd aan de hover tekst
                     title: `Naam: ${d.Label}\nType: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
                     startYear: parseInt(d.startyearcorfixvalue), 
                     endYear: parseInt(d.endyearcor),
-                    // FIX: Gebruik de Size kolom uit de data, met fallback naar 15
+                    // Gebruik Size kolom uit de data, met fallback naar 15
                     size: parseFloat(d.Size) || 15 
                 }));
 
                 // Laden van edges.csv (onveranderd)
                 const edgesData = await parseCSV('edges.csv');
                 allEdges = edgesData.map(d => ({
+                    // Mapping voor edges.csv
                     from: d.Source, 
                     to: d.Target, 
                     label: d.rollabel, 
@@ -105,39 +105,49 @@
 
             } catch (error) {
                 console.error("Fout bij het laden van de bestanden:", error);
-                // Duidelijke foutmelding als data niet geladen kan worden
-                container.innerHTML = "Kon de netwerkdata niet laden. Controleer of de bestanden **'nodes.csv'** en **'edges.csv'** correct zijn en op GitHub Pages staan.";
+                container.innerHTML = "<h2>Data Laadfout: Netwerk is leeg</h2><p>Controleer of de bestanden **'nodes.csv'** en **'edges.csv'** in dezelfde map staan als 'index.html' en of het **scheidingsteken** in de CSV-bestanden klopt.</p>";
             }
         }
 
         /**
-         * Utility functie om een CSV-bestand te parsen met PapaParse.
+         * Utility functie om een CSV-bestand te parsen met PapaParse (met dubbele controle voor delimiter).
          */
         function parseCSV(url) {
             return new Promise((resolve, reject) => {
-                Papa.parse(url, {
-                    download: true,
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        if (results.errors.length > 0) {
-                            console.error(`Fouten bij het parsen van ${url}:`, results.errors);
-                            reject(results.errors);
-                        } else {
-                            if (results.data.length === 0) {
-                                reject(new Error("Leeg of ongeldig CSV-bestand."));
-                            } else {
-                                resolve(results.data);
-                            }
+                const attemptParse = (delimiter = ',', callback) => {
+                    Papa.parse(url, {
+                        download: true,
+                        header: true,
+                        skipEmptyLines: true,
+                        delimiter: delimiter, // Gebruik de opgegeven delimiter
+                        complete: callback,
+                        error: (error) => reject(error)
+                    });
+                };
+
+                // Eerste poging: Komma-scheidingsteken (standaard)
+                attemptParse(',', (results) => {
+                    if (results.data.length > 0) {
+                        console.log(`CSV succesvol geladen met ',' voor ${url}`);
+                        return resolve(results.data);
+                    }
+
+                    // Tweede poging: Puntkomma-scheidingsteken (vaak bij Europese CSV's)
+                    attemptParse(';', (resultsSemi) => {
+                        if (resultsSemi.data.length > 0) {
+                            console.log(`CSV succesvol geladen met ';' voor ${url}`);
+                            return resolve(resultsSemi.data);
                         }
-                    },
-                    error: (error) => reject(error)
+
+                        // Definitieve fout
+                        reject(new Error(`CSV-bestand ${url} is leeg of kon niet correct worden geparst.`));
+                    });
                 });
             });
         }
 
         /**
-         * Filtert de randen op basis van de geselecteerde jaren en tekent het netwerk.
+         * Filtert en tekent het netwerk.
          */
         function filterAndDraw() {
             const startYear = parseInt(document.getElementById('startYear').value);
@@ -145,34 +155,28 @@
 
             if (isNaN(startYear) || isNaN(endYear)) return;
 
-            // 1. Filter de Edges: Rand actief als tijdsperiode overlapt met geselecteerde jaren.
             const filteredEdges = allEdges.filter(edge => {
                 return edge.startYear <= endYear && edge.endYear >= startYear;
             });
 
-            // 2. Bepaal de Nodes die verbonden zijn
             const connectedNodeIds = new Set();
             filteredEdges.forEach(edge => {
                 connectedNodeIds.add(edge.from);
                 connectedNodeIds.add(edge.to);
             });
 
-            // 3. Filter de Nodes (toon alleen verbonden nodes)
             const filteredNodes = allNodes.filter(node => {
                 return connectedNodeIds.has(node.id);
             });
             
-            // 4. Update de tellers
             document.getElementById('nodeCount').textContent = filteredNodes.length;
             document.getElementById('edgeCount').textContent = filteredEdges.length;
 
-            // 5. Creëer de Vis.js data structuur
             const data = {
                 nodes: new vis.DataSet(filteredNodes),
                 edges: new vis.DataSet(filteredEdges)
             };
 
-            // 6. Teken of update het netwerk
             if (network) {
                 network.setData(data);
             } else {
@@ -180,7 +184,7 @@
             }
         }
 
-        // Start het proces door de data te laden
+        // Start het proces
         loadData();
     </script>
 
