@@ -159,8 +159,7 @@
 
             if (network) {
                 network.setData(data);
-                // CENTREER bij elke nieuwe filtering
-                network.fit(); 
+                network.fit(); // CENTREER bij elke nieuwe filtering
             } else {
                 network = new vis.Network(container, data, options);
                 network.on("click", handleNodeClick);
@@ -174,11 +173,8 @@
 
         // --- Verbeterde Reset Functies (FIX WIT SCHERM) ---
         function resetView() {
-            if (network) {
-                resetHighlighting();
-                // CRUCIAAL: Centreer de weergave na de reset
-                network.fit(); 
-            }
+            // Roept filterAndDraw aan, wat de data, stijlen en fit reset naar de huidige jaartallen
+            filterAndDraw(); 
         }
 
         function resetHighlighting() {
@@ -224,6 +220,8 @@
             // Reset functionaliteit (klik op lege ruimte)
             if (params.nodes.length === 0) {
                 resetHighlighting();
+                // CRUCIAAL: Centreer de weergave na de reset via lege klik
+                network.fit(); 
                 return; 
             }
 
