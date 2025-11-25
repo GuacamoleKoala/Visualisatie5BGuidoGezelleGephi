@@ -43,7 +43,6 @@
         const options = {
             nodes: {
                 shape: 'dot',
-                size: 10, // Vaste grootte van 10
                 font: { size: 12, color: '#333' },
                 borderWidth: 2
             },
@@ -75,13 +74,15 @@
                 // Laden van nodes.csv
                 const nodesData = await parseCSV('nodes.csv');
                 allNodes = nodesData.map(d => ({
-                    // Mapping van de werkende versie
                     id: d.Id, 
                     label: d.Label, 
                     group: d.category, 
-                    title: `Type: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
+                    // FIX 1: Naam (Label) toegevoegd aan de hover tekst (title)
+                    title: `Naam: ${d.Label}\nType: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
                     startYear: parseInt(d.startyearcorfixvalue), 
-                    endYear: parseInt(d.endyearcor)
+                    endYear: parseInt(d.endyearcor),
+                    // FIX 2: Node grootte bepaald door 'Size' kolom
+                    size: parseFloat(d.Size) || 15 
                 }));
 
                 // Laden van edges.csv
@@ -90,8 +91,9 @@
                     from: d.Source, 
                     to: d.Target, 
                     label: d.rollabel, 
-                    title: `Relatie: ${d.rollabel}\nJaar: ${d['finalstartyearfix\nvalue']}-${d.finalendyearfixvalue}`,
-                    startYear: parseInt(d['finalstartyearfix\nvalue']), 
+                    // ✅ CRUCIALE FIX: De kolomnaam is nu de eenvoudige 'finalstartyearfixvalue'
+                    title: `Relatie: ${d.rollabel}\nJaar: ${d.finalstartyearfixvalue}-${d.finalendyearfixvalue}`,
+                    startYear: parseInt(d.finalstartyearfixvalue), 
                     endYear: parseInt(d.finalendyearfixvalue)
                 }));
                 
@@ -99,17 +101,20 @@
 
             } catch (error) {
                 console.error("Fout bij het laden van de bestanden:", error);
-                container.innerHTML = "Kon de netwerkdata niet laden. Controleer of de bestanden **'nodes.csv'** en **'edges.csv'** correct zijn.";
+                container.innerHTML = "<h2>Data Laadfout: Netwerk is leeg</h2><p>Controleer of de bestanden **'nodes.csv'** en **'edges.csv'** in dezelfde map staan. Druk op F12 en bekijk de **Console** voor gedetailleerde fouten.</p>";
             }
         }
 
+        /**
+         * Utility functie om een CSV-bestand te parsen met PapaParse (de stabiele versie).
+         */
         function parseCSV(url) {
             return new Promise((resolve, reject) => {
                 Papa.parse(url, {
                     download: true,
                     header: true,
                     skipEmptyLines: true,
-                    // De standaard parser (komma) die eerder werkte
+                    // De standaard parser (komma) die eerder werkte wordt gebruikt
                     complete: (results) => {
                         if (results.errors.length > 0) {
                             console.error(`Fouten bij het parsen van ${url}:`, results.errors);
@@ -162,6 +167,7 @@
             }
         }
 
+        // Start het proces
         loadData();
     </script>
 
