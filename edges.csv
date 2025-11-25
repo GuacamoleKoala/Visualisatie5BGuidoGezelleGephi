@@ -1,5 +1,4 @@
-Source,Target,Type,Id,Label,timeset,Weight,rollabel,"finalstartyearfix
-value",finalendyearfixvalue,Color
+Source,Target,Type,Id,Label,timeset,Weight,rollabel,finalstartyearfixvalue,finalendyearfixvalue,Color
 Q119454376,Q336977,Directed,0,,"<[1710.0, 1710.0]>",1,medewerker,1710,1710,"#c0c0c0"
 Q115818424,Q336977,Directed,1,,"<[1889.0, 1889.0]>",1,correspondent,1889,1889,"#00c4ff"
 Q119013873,Q336977,Directed,2,,"<[1892.0, 1892.0]>",1,correspondent,1892,1892,"#00c4ff"
@@ -4895,3 +4894,4 @@ Q64302,Q17505002,Directed,5184,,"<[1710.0, 1710.0]>",1,Beroep,1710,1710,"#df89ff
 Q64302,Q1726,Directed,5185,,"<[1710.0, 1710.0]>",1,Werklocatie,1710,1710,"#73c000"
 Q64302,Q2966,Directed,5186,,"<[1710.0, 1710.0]>",1,Werklocatie,1710,1710,"#73c000"
 Q64302,Q2079,Directed,5187,,"<[1710.0, 1710.0]>",1,Werklocatie,1710,1710,"#73c000"
+
