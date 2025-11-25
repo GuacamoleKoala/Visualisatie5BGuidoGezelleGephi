@@ -39,11 +39,11 @@
         let network = null;
         const container = document.getElementById('mynetwork');
 
-        // Configuraties voor Vis.js
+        // Configuraties voor Vis.js, aangepast voor snelle stabilisatie
         const options = {
             nodes: {
                 shape: 'dot',
-                // 'size' is hier verwijderd om de data-gedreven grootte te garanderen
+                // De size wordt nu door de data (size: d.Size) bepaald
                 font: { size: 12, color: '#333' },
                 borderWidth: 2
             },
@@ -78,18 +78,19 @@
                 // Laden van nodes.csv
                 const nodesData = await parseCSV('nodes.csv');
                 allNodes = nodesData.map(d => ({
+                    // GEFIXTE NAMES OP BASIS VAN DE NIEUWE NODES.CSV
                     id: d.Id, 
                     label: d.Label, 
                     group: d.category, 
-                    // FIX 1: Voeg de naam (Label) toe aan de hover tekst (title)
+                    // FIX: Naam (Label) toegevoegd aan de hover tekst
                     title: `Naam: ${d.Label}\nType: ${d.category}\nStart: ${d.startyearcorfixvalue}\nEind: ${d.endyearcor}`,
                     startYear: parseInt(d.startyearcorfixvalue), 
                     endYear: parseInt(d.endyearcor),
-                    // FIX 2: Gebruik de Size kolom voor de grootte van de knoop
-                    size: parseFloat(d.Size) 
+                    // FIX: Gebruik de Size kolom uit de data, met fallback naar 15
+                    size: parseFloat(d.Size) || 15 
                 }));
 
-                // Laden van edges.csv
+                // Laden van edges.csv (onveranderd)
                 const edgesData = await parseCSV('edges.csv');
                 allEdges = edgesData.map(d => ({
                     from: d.Source, 
@@ -104,6 +105,7 @@
 
             } catch (error) {
                 console.error("Fout bij het laden van de bestanden:", error);
+                // Duidelijke foutmelding als data niet geladen kan worden
                 container.innerHTML = "Kon de netwerkdata niet laden. Controleer of de bestanden **'nodes.csv'** en **'edges.csv'** correct zijn en op GitHub Pages staan.";
             }
         }
