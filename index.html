@@ -3,7 +3,7 @@
 <head>
     <title>Gezelle Netwerk Visualisatie</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.2/standalone/umd/vis-network.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparser.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         /* CRUCIAAL: De container moet een vaste hoogte en breedte hebben om zichtbaar te zijn */
         #mynetwork {
@@ -41,7 +41,7 @@
         let originalEdgesData = null; // Opslag voor de gefilterde, ongewijzigde edges
         const container = document.getElementById('mynetwork');
 
-        // --- Vis.js Options (Aangepast voor overlapvermijding) ---
+        // --- Vis.js Options (Met overlapvermijding) ---
         const options = {
             nodes: {
                 shape: 'dot',
@@ -61,7 +61,7 @@
                     centralGravity: 0.005,
                     springLength: 250,      
                     springConstant: 0.08,   
-                    avoidOverlap: 1         
+                    avoidOverlap: 1         // Gebruikt de 'Size' om overlapping te voorkomen
                 },
                 stabilization: { 
                     enabled: true, 
@@ -91,7 +91,7 @@
                 // Laden van edges.csv
                 const edgesData = await parseCSV('edges.csv');
                 allEdges = edgesData.map(d => ({
-                    id: d.Id, // Edge ID is nodig voor highlighting
+                    id: d.Id, 
                     from: d.Source, 
                     to: d.Target, 
                     label: d.rollabel, 
@@ -176,10 +176,11 @@
         // --------------------------------------------------------------------
 
 
-        // --- Nieuwe Click Handler Functie (de oplossing) ---
+        // --- Click Handler Functie (voor highlighting) ---
         function handleNodeClick(params) {
             // Als er niets is aangeklikt of als er op een rand is geklikt, reset de weergave
             if (params.nodes.length === 0) {
+                // Gebruik de originele gefilterde data om te resetten
                 network.setData({
                     nodes: originalNodesData,
                     edges: originalEdgesData
@@ -207,12 +208,11 @@
                 let update = {};
 
                 if (isSelected || isConnected) {
-                    // Geselecteerde en verbonden nodes: Lichter, groter (optioneel), vol.
+                    // Geselecteerde en verbonden nodes: Lichter, vol.
                     update = {
                         id: node.id,
                         opacity: 1.0,
-                        color: node.color, // Gebruik de originele kleur
-                        // Optioneel: Border laten oplichten of size vergroten
+                        color: node.color, 
                         borderWidth: isSelected ? 3 : 2
                     };
                 } else {
